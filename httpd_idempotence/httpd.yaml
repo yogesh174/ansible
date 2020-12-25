@@ -1,0 +1,51 @@
+- hosts: webservers
+
+  vars:
+    - port_no : 8081
+    - document_root: "/var/www/webserver"
+    - path_to_conf: "./httpd_conf.j2"
+    - webpages_path: "./webpages"
+
+  tasks:
+
+    - name: "Install Apache webserver"
+      package: 
+        name: "httpd"
+        state: "present"
+
+    - name: "Transfer conf files"
+      template:
+        src: "{{ path_to_conf }}"
+        dest: "/etc/httpd/conf.d/custom.conf"
+      notify: "Restart httpd service"
+
+    - name: "Create a directory for document root"
+      file:
+        path: "{{ document_root }}"
+        state: "directory"
+
+    - name: "Transfer webpages"
+      copy: 
+        src: "{{ item }}"
+        dest: "{{ document_root }}"
+      with_fileglob: "{{ webpages_path }}/*"
+
+    - name: "Make a firewall rule"
+      firewalld:
+        port: "{{ port_no }}/tcp"
+        permanent: "yes"
+        state: "enabled"
+        immediate: true
+
+    - name: "Start httpd service"
+      service: 
+        name: "httpd"
+        state: "started"
+
+  handlers:
+      
+    - name: "Restart httpd service"
+      service: 
+        name: "httpd"
+        state: "restarted"
+        enabled: "yes"
